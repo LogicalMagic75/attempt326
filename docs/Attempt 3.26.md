@@ -4,19 +4,31 @@ Attempt 3.26
 
 *Goal: Establish the engine parameters and prove the core mathematical model.*
 
+**World scale:** One **game unit** (one Godot/engine unit of distance) equals **10 real-world meters** (10 m). Interpret all physical distances in this document—grid spacing, planet diameter, export scale—in SI meters, then convert for the engine by **÷ 10** (engine to meters: **× 10**). Example: a 6,700 km diameter planet is 6.7×10⁶ m across, or **670,000** game units between antipodal surface points along a diameter.
+
 1. **Godot 4.5 Environment Setup:**  
    * Download or compile a **Double Precision (64-bit)** build of Godot 4.5. This is non-negotiable for planetary-scale coordinates to prevent floating-point jitter.  
    * Initialize a new project and set up a Git repository.  
 2. **The Cube-Sphere Prototype:**  
    * Write a GDScript utility that generates a basic 3D cube and normalizes its vertices to form a sphere.  
-   * Implement the coordinate conversion math: Translate a global 3D Vector3 position on that sphere into a specific (Face ID, X, Y) coordinate.  
+   * Implement the coordinate conversion math: Translate a global 3D Vector3 position on that sphere into a specific (Face ID, X, Y) coordinate.
+
+| Property | Specification | Rationale |
+| :---- | :---- | :---- |
+| **World scale** | **1 game unit = 10 m** | Single conversion between engine coordinates and physical meters for simulation, UI labels, and VTT export. |
+| **Coordinate Space** | **Model Space (MODEL\_ Constants)** | Ensures 3D assets and character controllers align with Godot's imported asset conventions. |
+| **Winding Order** | **Counter-Clockwise (CCW)** | Godot’s default for front-face rendering. Indices must be ordered to point "outward" from the sphere's center to avoid backface culling. |
+| **Normal Direction** | **Outward Radial** | For a sphere, the normal vector at any vertex is equal to the normalized position of that vertex ($Normal \= \\frac{Position}{ |
+| **Precision** | **64-bit Double Precision** | Required to prevent floating-point jitter at the 6,700 km scale (Phase 2). |
+
 3. **The Custom Camera Director (V1):**  
    * Create the "God Camera" that always looks at (0,0,0).  
    * Implement the basic altitude-driven zoom controls.
 
 ### **Phase 2: The Macro-Simulation (Server-Side Logic)**
 
-*Goal: Generate the low-resolution "base truth" of the planet.*
+*Goal: Generate the low-resolution "base truth" of the planet.*  
+*6,700 km diameter. Uses a 2^16 grid (65,536 points). Resolution: approx 80 m real (~8 game units on this scale).*
 
 1. **Low-Res Tectonic Generation:**  
    * Create a script to generate the Level 0 data (e.g., a $512 \\times 512$ grid per face).  

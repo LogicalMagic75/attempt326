@@ -1,0 +1,29 @@
+[gd_scene format=3 uid="uid://bbg2o6tu2gg02"]
+
+[ext_resource type="PackedScene" uid="uid://dqfm0tc5na6sa" path="res://planet.tscn" id="1_8wuuv"]
+[ext_resource type="Script" uid="uid://btje4wv6mx852" path="res://Scripts/camera_orbit_rig.gd" id="2_c8rig"]
+
+[sub_resource type="Environment" id="Environment_axkxw"]
+background_mode = 1
+ambient_light_source = 2
+ambient_light_color = Color(1, 0.972549, 0.90588236, 1)
+ambient_light_energy = 0.01
+
+[node name="MainView" type="Node3D" unique_id=1155412255]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1859468102]
+environment = SubResource("Environment_axkxw")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="WorldEnvironment" unique_id=615132259]
+
+[node name="Planet" parent="." unique_id=2076933402 instance=ExtResource("1_8wuuv")]
+
+[node name="CameraOrbitRig" type="Node3D" parent="." unique_id=1451050461]
+script = ExtResource("2_c8rig")
+
+[node name="Camera3D" type="Camera3D" parent="CameraOrbitRig" unique_id=1023671692]
+projection = 1
+current = true
+size = 350.0
+near = 1.0
+far = 3000000.0
