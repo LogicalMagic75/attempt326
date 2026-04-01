@@ -1,0 +1,18 @@
+---
+description: Where to find the Godot executable for CLI and headless runs in this repo
+alwaysApply: true
+---
+
+# Godot executable path (headless / CLI)
+
+When running Godot from a terminal or for headless validators under `tools/`, resolve the binary in this order:
+
+1. **Repo root `godot.path`** — single line, full path to the executable (trim whitespace). This file is gitignored; copy `godot.path.example` and set your path.
+2. **Environment** — `GODOT` or `GODOT_EXECUTABLE` (full path).
+3. **PATH** — invoke `godot` if it is on the system PATH.
+
+Example (PowerShell), project root:
+
+`& (Get-Content -Raw godot.path).Trim() --headless --path . --script res://tools/climate_latitude_validator.gd`
+
+The VS Code / Cursor Godot extension uses workspace **`godotTools.editorPath.godot4`** in `.vscode/settings.json` (same binary as above for this machine).

@@ -1,0 +1,11 @@
+<!-- Sdk version must match local nupkgs from your engine (e.g. 4.7.0-dev vs 4.7.0-dev.3) or restore uses nuget.org GodotSharp. -->
+<Project Sdk="Godot.NET.Sdk/4.7.0-dev">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <AssemblyName>Attempt326</AssemblyName>
+    <RootNamespace>Attempt326</RootNamespace>
+    <!-- Match custom double-precision Godot builds (real_t = double). -->
+    <GodotFloat64>true</GodotFloat64>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,7 @@
+Godot Engine v4.7.dev.mono.double.custom_build.06c3946e3 (2026-03-30 18:35:49 UTC) - https://godotengine.org
+
+SeaLevelHistogram m: < -50:1027823, -50..-10:3156, -10..-2:613, -2..0:156, 0..2:142, 2..10:613, 10..50:2867, >=50:537494; min=-1869.8, max=4875.1
+SCRIPT ERROR: Invalid call. Nonexistent function 'get_biome_id_histogram_gd' in base 'RefCounted (ClimateSimulator)'.
+   at: _init (res://tools/biome_id_histogram_run.gd:67)
+   GDScript backtrace (most recent call first):
+       [0] _init (res://tools/biome_id_histogram_run.gd:67)

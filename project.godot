@@ -12,8 +12,12 @@ config_version=5
 
 config/name="Attempt326"
 run/main_scene="uid://bbg2o6tu2gg02"
-config/features=PackedStringArray("4.6", "Double Precision", "Forward Plus")
+config/features=PackedStringArray("4.7", "C#", "Double Precision", "Forward Plus")
 config/icon="res://icon.svg"
+
+[dotnet]
+
+project/assembly_name="Attempt326"
 
 [physics]
 

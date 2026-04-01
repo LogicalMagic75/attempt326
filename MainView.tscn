@@ -2,6 +2,19 @@
 
 [ext_resource type="PackedScene" uid="uid://dqfm0tc5na6sa" path="res://planet.tscn" id="1_8wuuv"]
 [ext_resource type="Script" uid="uid://btje4wv6mx852" path="res://Scripts/camera_orbit_rig.gd" id="2_c8rig"]
+[ext_resource type="Script" uid="uid://cg4bf6n7dfndk" path="res://Scripts/debug_side_panel.gd" id="3_debug"]
+[ext_resource type="Script" uid="uid://b38v83sgcb2qa" path="res://Scripts/TectonicPlates.cs" id="4_6d7y0"]
+[ext_resource type="Script" uid="uid://bmetd3opuh8y5" path="res://Scripts/PlanetBaseTruthBaker.cs" id="4_baker"]
+[ext_resource type="Script" uid="uid://dv8nx7qm2b48k" path="res://Scripts/climate_sim_tuning.gd" id="5_dsjxm"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_viz_panel"]
+bg_color = Color(0.08, 0.08, 0.12, 0.88)
+border_width_right = 1
+border_color = Color(0.28, 0.3, 0.38, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [sub_resource type="Environment" id="Environment_axkxw"]
 background_mode = 1
@@ -9,21 +22,365 @@ ambient_light_source = 2
 ambient_light_color = Color(1, 0.972549, 0.90588236, 1)
 ambient_light_energy = 0.01
 
-[node name="MainView" type="Node3D" unique_id=1155412255]
+[sub_resource type="Resource" id="Resource_dsjxm"]
+script = ExtResource("4_6d7y0")
+DomainWarpNoiseFrequency = 1.3
+DomainWarpFractalOctaves = 5
+PlateCount = 30
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1859468102]
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_2x1y1"]
+noise_type = 4
+frequency = 0.002
+fractal_octaves = 7
+fractal_lacunarity = 5.0
+fractal_gain = 0.6
+fractal_weighted_strength = 0.5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_debug_panel"]
+bg_color = Color(0.08, 0.08, 0.12, 0.88)
+border_width_left = 1
+border_color = Color(0.28, 0.3, 0.38, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="Resource" id="Resource_climate_tuning"]
+script = ExtResource("5_dsjxm")
+
+[node name="MainView" type="Control" unique_id=1266963260]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MainHBox" type="HBoxContainer" parent="." unique_id=1720900678]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="VisualizationPanel" type="PanelContainer" parent="MainHBox" unique_id=2102222380]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_viz_panel")
+
+[node name="Margin" type="MarginContainer" parent="MainHBox/VisualizationPanel" unique_id=2102222381]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="VBox" type="VBoxContainer" parent="MainHBox/VisualizationPanel/Margin" unique_id=2102222382]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="VisualizationTitle" type="Label" parent="MainHBox/VisualizationPanel/Margin/VBox" unique_id=1339327439]
+layout_mode = 2
+text = "Visualization"
+
+[node name="ElevationVizCheck" type="CheckButton" parent="MainHBox/VisualizationPanel/Margin/VBox" unique_id=2044569617]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Elevation heatmap (memory)"
+
+[node name="TemperatureVizCheck" type="CheckButton" parent="MainHBox/VisualizationPanel/Margin/VBox" unique_id=1282832555]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Temperature (climate grid)"
+
+[node name="MoistureVizCheck" type="CheckButton" parent="MainHBox/VisualizationPanel/Margin/VBox" unique_id=503455314]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Moisture / precipitation (climate grid)"
+
+[node name="BiomeVizCheck" type="CheckButton" parent="MainHBox/VisualizationPanel/Margin/VBox" unique_id=503455315]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Biomes (climate grid)"
+
+[node name="BiomeLegendBox" type="VBoxContainer" parent="MainHBox/VisualizationPanel/Margin/VBox" unique_id=503455316]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="PlanetColumn" type="Control" parent="MainHBox" unique_id=2102222383]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PlanetBackdrop" type="ColorRect" parent="MainHBox/PlanetColumn" unique_id=2102222384]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.05, 0.05, 0.08, 1)
+
+[node name="AspectRatioContainer" type="AspectRatioContainer" parent="MainHBox/PlanetColumn" unique_id=2102222385]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="MainHBox/PlanetColumn/AspectRatioContainer" unique_id=2102222386]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="MainHBox/PlanetColumn/AspectRatioContainer/SubViewportContainer" unique_id=2102222387]
+handle_input_locally = false
+size = Vector2i(490, 490)
+render_target_update_mode = 4
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="MainHBox/PlanetColumn/AspectRatioContainer/SubViewportContainer/SubViewport" unique_id=1376657459]
 environment = SubResource("Environment_axkxw")
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="WorldEnvironment" unique_id=615132259]
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="MainHBox/PlanetColumn/AspectRatioContainer/SubViewportContainer/SubViewport/WorldEnvironment" unique_id=612925850]
 
-[node name="Planet" parent="." unique_id=2076933402 instance=ExtResource("1_8wuuv")]
+[node name="Planet" parent="MainHBox/PlanetColumn/AspectRatioContainer/SubViewportContainer/SubViewport" unique_id=1839346092 instance=ExtResource("1_8wuuv")]
+river_flow_threshold = 100.0
 
-[node name="CameraOrbitRig" type="Node3D" parent="." unique_id=1451050461]
+[node name="CameraOrbitRig" type="Node3D" parent="MainHBox/PlanetColumn/AspectRatioContainer/SubViewportContainer/SubViewport" unique_id=1559822961]
 script = ExtResource("2_c8rig")
 
-[node name="Camera3D" type="Camera3D" parent="CameraOrbitRig" unique_id=1023671692]
+[node name="Camera3D" type="Camera3D" parent="MainHBox/PlanetColumn/AspectRatioContainer/SubViewportContainer/SubViewport/CameraOrbitRig" unique_id=1759014736]
 projection = 1
 current = true
 size = 350.0
 near = 1.0
 far = 3000000.0
+
+[node name="PlanetBaseTruthBaker" type="Node" parent="MainHBox/PlanetColumn/AspectRatioContainer/SubViewportContainer/SubViewport" unique_id=454192434]
+script = ExtResource("4_baker")
+Tectonics = SubResource("Resource_dsjxm")
+DetailNoise = SubResource("FastNoiseLite_2x1y1")
+NoiseAmplitudeM = 1280.0
+DetailNoiseCoordScale = 1000.0
+
+[node name="DebugSidePanel" type="PanelContainer" parent="MainHBox" unique_id=333831483]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_debug_panel")
+script = ExtResource("3_debug")
+climate_tuning = SubResource("Resource_climate_tuning")
+
+[node name="Margin" type="MarginContainer" parent="MainHBox/DebugSidePanel" unique_id=1748875609]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="VBox" type="VBoxContainer" parent="MainHBox/DebugSidePanel/Margin" unique_id=1816464216]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DebugTitle" type="Label" parent="MainHBox/DebugSidePanel/Margin/VBox" unique_id=143307408]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Debug"
+
+[node name="ElevationReadout" type="Label" parent="MainHBox/DebugSidePanel/Margin/VBox" unique_id=892221391]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(252, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.75, 0.85, 1, 1)
+text = "Ground footprint —"
+autowrap_mode = 3
+
+[node name="PipelineVBox" type="VBoxContainer" parent="MainHBox/DebugSidePanel/Margin/VBox" unique_id=333831484]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PipelineTaskLabel" type="Label" parent="MainHBox/DebugSidePanel/Margin/VBox/PipelineVBox" unique_id=333831485]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(252, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.95, 0.85, 1)
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 3
+
+[node name="PipelineProgressBar" type="ProgressBar" parent="MainHBox/DebugSidePanel/Margin/VBox/PipelineVBox" unique_id=333831486]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 14)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.001
+
+[node name="DebugScroll" type="ScrollContainer" parent="MainHBox/DebugSidePanel/Margin/VBox" unique_id=836249212]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="DebugLabel" type="Label" parent="MainHBox/DebugSidePanel/Margin/VBox/DebugScroll" unique_id=144037819]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(252, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Debug output will appear here."
+autowrap_mode = 3
+
+[node name="Separator" type="HSeparator" parent="MainHBox/DebugSidePanel/Margin/VBox" unique_id=182541662]
+layout_mode = 2
+
+[node name="ControlsTitle" type="Label" parent="MainHBox/DebugSidePanel/Margin/VBox" unique_id=1319009633]
+layout_mode = 2
+text = "Controls"
+
+[node name="ControlsHost" type="VBoxContainer" parent="MainHBox/DebugSidePanel/Margin/VBox" unique_id=880555613]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="WorldSeedHeader" type="HBoxContainer" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost" unique_id=882611411]
+layout_mode = 2
+
+[node name="WorldSeedLabel" type="Label" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/WorldSeedHeader" unique_id=882611412]
+layout_mode = 2
+text = "World seed"
+
+[node name="WorldSeedSpin" type="SpinBox" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/WorldSeedHeader" unique_id=882611413]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -2147483600.0
+max_value = 2147483647.0
+value = 4.0
+rounded = true
+
+[node name="RandomSeedButton" type="Button" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/WorldSeedHeader" unique_id=882611414]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Random"
+
+[node name="LandAreaBox" type="VBoxContainer" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost" unique_id=882611410]
+layout_mode = 2
+
+[node name="LandAreaHeader" type="HBoxContainer" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/LandAreaBox" unique_id=1521244269]
+layout_mode = 2
+
+[node name="LandAreaTitle" type="Label" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/LandAreaBox/LandAreaHeader" unique_id=1691903203]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Target land area"
+
+[node name="LandAreaValueLabel" type="Label" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/LandAreaBox/LandAreaHeader" unique_id=945571607]
+unique_name_in_owner = true
+layout_mode = 2
+text = "25%"
+
+[node name="LandAreaSlider" type="HSlider" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/LandAreaBox" unique_id=19762084]
+unique_name_in_owner = true
+layout_mode = 2
+value = 25.0
+
+[node name="GenTempBox" type="VBoxContainer" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost" unique_id=19762085]
+layout_mode = 2
+
+[node name="GenTempHeader" type="HBoxContainer" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/GenTempBox" unique_id=19762086]
+layout_mode = 2
+
+[node name="GenTempTitle" type="Label" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/GenTempBox/GenTempHeader" unique_id=19762087]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Temperature (Δ °C)"
+
+[node name="GenTempValueLabel" type="Label" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/GenTempBox/GenTempHeader" unique_id=19762088]
+unique_name_in_owner = true
+layout_mode = 2
+text = "+0.0"
+
+[node name="GenTempSlider" type="HSlider" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/GenTempBox" unique_id=19762089]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -40.0
+max_value = 40.0
+step = 0.5
+
+[node name="GenRainBox" type="VBoxContainer" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost" unique_id=19762090]
+layout_mode = 2
+
+[node name="GenRainHeader" type="HBoxContainer" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/GenRainBox" unique_id=19762091]
+layout_mode = 2
+
+[node name="GenRainTitle" type="Label" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/GenRainBox/GenRainHeader" unique_id=19762092]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Rainfall (%)"
+
+[node name="GenRainValueLabel" type="Label" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/GenRainBox/GenRainHeader" unique_id=19762093]
+unique_name_in_owner = true
+layout_mode = 2
+text = "100%"
+
+[node name="GenRainSlider" type="HSlider" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/GenRainBox" unique_id=19762094]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -90.0
+max_value = 90.0
+
+[node name="GenOceanBox" type="VBoxContainer" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost" unique_id=19762095]
+layout_mode = 2
+
+[node name="GenOceanHeader" type="HBoxContainer" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/GenOceanBox" unique_id=19762096]
+layout_mode = 2
+
+[node name="GenOceanTitle" type="Label" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/GenOceanBox/GenOceanHeader" unique_id=19762097]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Ocean level (m MSL)"
+
+[node name="GenOceanValueLabel" type="Label" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/GenOceanBox/GenOceanHeader" unique_id=19762098]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0"
+
+[node name="GenOceanSlider" type="HSlider" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost/GenOceanBox" unique_id=19762099]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -1500.0
+max_value = 1500.0
+
+[node name="ShowPrecipCurveButton" type="Button" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost" unique_id=996314103]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open latitude precipitation curve"
+
+[node name="ShowTempCurveButton" type="Button" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost" unique_id=996314104]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open latitude temperature curve"
+
+[node name="ShowWhittakerDiagramButton" type="Button" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost" unique_id=996314105]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Whittaker T/P diagram"
+
+[node name="GenerateBaseDataButton" type="Button" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost" unique_id=996314100]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Regenerate"
+
+[node name="ExportClimateExrsButton" type="Button" parent="MainHBox/DebugSidePanel/Margin/VBox/ControlsHost" unique_id=996314102]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Export climate EXRs (Phase 2.2)"

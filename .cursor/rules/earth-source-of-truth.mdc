@@ -1,0 +1,23 @@
+---
+description: Earth-observation baseline for defaults and climate/planet modeling
+alwaysApply: true
+---
+
+# Earth as source of truth
+
+This project models an **Earth-like** planet. **Observed Earth** (instrumental norms, standard climatology, and documented reference bands in-repo) is the **source of truth** for whether defaults are acceptable—not an arbitrary fantasy baseline.
+
+## Defaults
+
+- **Editor defaults, scene exports, tuning resources, and “slider at neutral”** should reproduce conditions **as close as practical** to real Earth for the scope of the feature (temperature zonal means, precipitation zonal means, sea/land semantics, biome diagram alignment, etc.).
+- Prefer adjusting **named physical parameters** (zonal rain bases, lapse, maritime factors, etc.) so that **neutral UI** means “Earth-like,” rather than hiding calibration in opaque global multipliers. If a multiplier exists for iteration, document how it relates to the Earth baseline.
+- When Earth fidelity and performance UX conflict, **preserve Earth truth in defaults** and make departures explicit (debug-only, opt-in presets, or clearly labeled overrides).
+
+## Validation & drift
+
+- Use existing **headless validators and reference tables** (e.g. latitude-band checks under `tools/`) when changing climate or terrain that affects climatology. If a change intentionally diverges from Earth, **state the scientific or gameplay reason** in PR/commit context—not only in chat.
+- Do not “renormalize” thresholds or bands ad hoc to make tests pass without tying them to Earth or a cited reference.
+
+## Scope
+
+- Applies to **climate simulation**, **hydrology/soil wetness**, **biome mapping**, **planetary scale** where it affects Earth comparison, and **documentation** that claims realism or “Earth-like” behavior.

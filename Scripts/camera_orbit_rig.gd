@@ -1,10 +1,18 @@
+class_name CameraOrbitRig
 extends Node3D
 ## God camera: looks at planet center. World +Y = north pole axis.
 ## Motion follows the lines: along latitude circles = spin forever (φ). Along meridians
 ## (longitude lines) = north/south until the pole, then stop — no flip through (θ clamped).
 ## Keys: A/D = west/east along parallels; W/S = north/south along meridians (matches mouse).
 
-const PLANET_RADIUS_GAME_UNITS: float = 335_000.0
+const _PS := preload("res://Scripts/project_scale.gd")
+## Physical radius (km); derived from [member _PS.PLANET_RADIUS_GAME_UNITS] × [member _PS.METERS_PER_GAME_UNIT].
+const PLANET_RADIUS_KM: float = _PS.PLANET_RADIUS_GAME_UNITS * _PS.METERS_PER_GAME_UNIT / 1000.0
+## Max zoom-in: approximate nadir ground footprint diameter (km); ortho [param ortho_size] matches this span on the tangent plane for small patches, not camera altitude.
+const MIN_GROUND_FOOTPRINT_DIAMETER_KM: float = 60.0
+const MIN_ORTHO_SIZE_AT_MIN_VIEW_KM: float = (
+	MIN_GROUND_FOOTPRINT_DIAMETER_KM * 1000.0 / _PS.METERS_PER_GAME_UNIT
+)
 const TAU: float = PI * 2.0
 ## Colatitude stops short of 0 / π (exact poles) to avoid basis flips (radians).
 const COLATITUDE_POLE_MARGIN: float = 0.1
@@ -15,13 +23,46 @@ const SIDE_FALLBACK_LEN_SQ: float = 1e-14
 @export var target: Vector3 = Vector3.ZERO
 @export var camera_path: NodePath = ^"Camera3D"
 
-@export_group("Altitude zoom (1 unit = 10 m)")
-@export var altitude: float = 2_000_000.0
-@export var min_altitude: float = PLANET_RADIUS_GAME_UNITS * 1.15
-@export var max_altitude: float = 2_000_000.0
+@export_group("Orthographic zoom (1 game unit = 10 m)")
+## Radial distance from target along the view ray. Zoom uses ortho size only; this is placement and clipping.
+@export var orbit_radius: float = 2_000_000.0
+## Orthographic diameter on the locked axis (Godot: [member Camera3D.size] is full span, not half). If <= 0 on load, starts at full-disk zoom-out.
+@export var ortho_size: float = 0.0
 @export var zoom_wheel_factor: float = 0.12
-@export var min_ortho_size: float = 400.0
+@export var min_ortho_size: float = MIN_ORTHO_SIZE_AT_MIN_VIEW_KM
 @export var full_disk_margin: float = 1.12
+## Endpoints for apparent_altitude, inverted from the ortho_size ↔ t mapping (same as the old altitude lerp).
+@export var min_altitude: float = _PS.PLANET_RADIUS_GAME_UNITS * 1.15
+@export var max_altitude: float = 2_000_000.0
+
+## LOD / UI / sim: same linear "altitude" as before, derived from current ortho_size.
+var apparent_altitude: float:
+	get:
+		return _apparent_altitude_for_ortho_size(ortho_size)
+
+
+func get_apparent_altitude_km() -> float:
+	return apparent_altitude * _PS.METERS_PER_GAME_UNIT / 1000.0
+
+
+## Ortho vertical span in km (Camera3D.size). For nadir and patch ≪ R, ≈ ground footprint diameter.
+func get_ortho_view_height_km() -> float:
+	return ortho_size * _PS.METERS_PER_GAME_UNIT / 1000.0
+
+
+## Perspective altitude h (km) with the same tangent-disk chord diameter S as ortho span [method get_ortho_view_height_km]: h = R/√(1−(S/2R)²) − R. Invalid (INF) when S ≥ 2R.
+func get_equivalent_perspective_altitude_km() -> float:
+	var s_km: float = get_ortho_view_height_km()
+	var r_km: float = PLANET_RADIUS_KM
+	if s_km <= 0.0:
+		return 0.0
+	var half_chord_over_r: float = s_km / (2.0 * r_km)
+	if half_chord_over_r >= 1.0:
+		return INF
+	var radicand: float = 1.0 - half_chord_over_r * half_chord_over_r
+	if radicand <= 0.0:
+		return INF
+	return r_km / sqrt(radicand) - r_km
 
 @export_group("Orbit")
 @export var rotation_sensitivity: float = 0.0025
@@ -41,7 +82,10 @@ var _prev_cam_up: Vector3 = Vector3.UP
 
 
 func _ready() -> void:
-	altitude = clampf(altitude, min_altitude, max_altitude)
+	if ortho_size <= 0.0:
+		ortho_size = _ortho_size_full_disk()
+	else:
+		ortho_size = _clamp_ortho_size(ortho_size)
 	_wrap_phi()
 	_theta = _clamp_theta(_theta)
 	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -112,7 +156,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _zoom_orbit(steps_sign: float) -> void:
 	var factor := 1.0 + zoom_wheel_factor * steps_sign
-	altitude = clampf(altitude * factor, min_altitude, max_altitude)
+	ortho_size = _clamp_ortho_size(ortho_size * factor)
 	_apply_camera()
 
 
@@ -158,15 +202,16 @@ func _twist_free_basis(forward: Vector3) -> Basis:
 
 
 func _apply_camera() -> void:
+	ortho_size = _clamp_ortho_size(ortho_size)
 	var dir := _orbit_dir()
-	var pos := target + dir * altitude
+	var pos := target + dir * orbit_radius
 	var forward := -dir
 	var cam_basis := _twist_free_basis(forward)
 	_camera.global_transform = Transform3D(cam_basis, pos)
-	_camera.size = _ortho_size_for_altitude()
-	var margin: float = maxf(50_000.0, altitude * 0.05)
+	_camera.size = ortho_size
+	var margin: float = maxf(50_000.0, orbit_radius * 0.05)
 	_camera.near = 1.0
-	_camera.far = altitude + PLANET_RADIUS_GAME_UNITS + margin
+	_camera.far = orbit_radius + _PS.PLANET_RADIUS_GAME_UNITS + margin
 
 
 func _viewport_aspect() -> float:
@@ -176,11 +221,17 @@ func _viewport_aspect() -> float:
 
 func _ortho_size_full_disk() -> float:
 	var aspect := _viewport_aspect()
-	var min_diameter := 2.0 * PLANET_RADIUS_GAME_UNITS * full_disk_margin
+	var min_diameter := 2.0 * _PS.PLANET_RADIUS_GAME_UNITS * full_disk_margin
 	return min_diameter * maxf(1.0, 1.0 / aspect)
 
 
-func _ortho_size_for_altitude() -> float:
+func _clamp_ortho_size(s: float) -> float:
+	return clampf(s, min_ortho_size, _ortho_size_full_disk())
+
+
+func _apparent_altitude_for_ortho_size(s: float) -> float:
+	var smax := _ortho_size_full_disk()
+	var denom := maxf(smax - min_ortho_size, 1e-6)
+	var t := clampf((s - min_ortho_size) / denom, 0.0, 1.0)
 	var span := maxf(max_altitude - min_altitude, 1.0)
-	var t := clampf((altitude - min_altitude) / span, 0.0, 1.0)
-	return lerpf(min_ortho_size, _ortho_size_full_disk(), t)
+	return min_altitude + t * span
