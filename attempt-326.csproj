@@ -8,4 +8,7 @@
     <!-- Match custom double-precision Godot builds (real_t = double). -->
     <GodotFloat64>true</GodotFloat64>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.5" />
+  </ItemGroup>
 </Project>

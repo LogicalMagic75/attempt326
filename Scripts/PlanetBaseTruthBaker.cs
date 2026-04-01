@@ -106,6 +106,7 @@ public partial class PlanetBaseTruthBaker : Godot.Node
 
 	public override void _Ready()
 	{
+		DatabaseManager.Initialize();
 		EnsureTectonics();
 
 		if (DetailNoise == null)
@@ -266,11 +267,16 @@ public partial class PlanetBaseTruthBaker : Godot.Node
 			for (int face = 0; face < FACE_COUNT; face++)
 			{
 				AddDetailNoiseToFaceWithProgress(faceBuffers[face], face);
+				DatabaseManager.ApplyTerrainDeltas(faceBuffers[face], face, FACE_RES);
 			}
 		}
 		else
 		{
 			NotifyBakeProgress("noise", 0.89f, "Bake: detail noise disabled (debug toggle)");
+			for (int face = 0; face < FACE_COUNT; face++)
+			{
+				DatabaseManager.ApplyTerrainDeltas(faceBuffers[face], face, FACE_RES);
+			}
 		}
 		ReportSeaLevelHistogram(faceBuffers);
 
