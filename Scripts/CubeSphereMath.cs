@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Godot;
 
 public static class CubeSphereMath
@@ -37,7 +38,11 @@ public static class CubeSphereMath
 
     public static FaceUV unit_direction_to_face_uv01(Godot.Vector3 dir)
     {
-        Godot.Vector3 p = dir.Normalized();
+        return calculate_raw_face_uv(dir.Normalized());
+    }
+
+    private static FaceUV calculate_raw_face_uv(Godot.Vector3 p)
+    {
         float ax = (float)Godot.Mathf.Abs(p.X);
         float ay = (float)Godot.Mathf.Abs(p.Y);
         float az = (float)Godot.Mathf.Abs(p.Z);
@@ -97,56 +102,9 @@ public static class CubeSphereMath
 
     public static Godot.Vector3I unit_direction_to_nearest_cell(int res, Godot.Vector3 dir_unit)
     {
-        Godot.Vector3 p = dir_unit.Normalized();
-        float ax = (float)Godot.Mathf.Abs(p.X);
-        float ay = (float)Godot.Mathf.Abs(p.Y);
-        float az = (float)Godot.Mathf.Abs(p.Z);
-        int face;
-        Godot.Vector2 uv;
-        float d;
-
-        if (ax >= ay && ax >= az)
-        {
-            d = Godot.Mathf.Max(ax, 1e-8f);
-            if (p.X > 0.0f)
-            {
-                face = (int)FaceID.RIGHT;
-                uv = new Godot.Vector2(p.Z / (2.0f * d) + 0.5f, 0.5f - p.Y / (2.0f * d));
-            }
-            else
-            {
-                face = (int)FaceID.LEFT;
-                uv = new Godot.Vector2(0.5f - p.Z / (2.0f * d), 0.5f - p.Y / (2.0f * d));
-            }
-        }
-        else if (ay >= ax && ay >= az)
-        {
-            d = Godot.Mathf.Max(ay, 1e-8f);
-            if (p.Y > 0.0f)
-            {
-                face = (int)FaceID.TOP;
-                uv = new Godot.Vector2(p.X / (2.0f * d) + 0.5f, 0.5f - p.Z / (2.0f * d));
-            }
-            else
-            {
-                face = (int)FaceID.BOTTOM;
-                uv = new Godot.Vector2(0.5f - p.X / (2.0f * d), 0.5f - p.Z / (2.0f * d));
-            }
-        }
-        else
-        {
-            d = Godot.Mathf.Max(az, 1e-8f);
-            if (p.Z > 0.0f)
-            {
-                face = (int)FaceID.FRONT;
-                uv = new Godot.Vector2(0.5f + p.Y / (2.0f * d), 0.5f - p.X / (2.0f * d));
-            }
-            else
-            {
-                face = (int)FaceID.BACK;
-                uv = new Godot.Vector2(0.5f - p.Y / (2.0f * d), 0.5f - p.X / (2.0f * d));
-            }
-        }
+        FaceUV raw = calculate_raw_face_uv(dir_unit.Normalized());
+        int face = raw.Face;
+        Godot.Vector2 uv = raw.Uv;
 
         uv.X = Godot.Mathf.Clamp(uv.X, 0.0f, 1.0f);
         uv.Y = Godot.Mathf.Clamp(uv.Y, 0.0f, 1.0f);
@@ -192,11 +150,12 @@ public static class CubeSphereMath
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Godot.Vector3I climate_grid_neighbor(int res, int face, int x, int y, int dx, int dy)
     {
         int nx = x + dx;
         int ny = y + dy;
-        if (nx >= 0 && nx < res && ny >= 0 && ny < res)
+        if ((uint)nx < (uint)res && (uint)ny < (uint)res)
         {
             return new Godot.Vector3I(face, nx, ny);
         }

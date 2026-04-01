@@ -303,35 +303,28 @@ static func _ensure_export_dir(path: String) -> void:
 	dir.make_dir_recursive(relative)
 
 
+func _get_map_range(map: PackedFloat32Array, default_max: float) -> Vector2:
+	if not is_allocated() or map.is_empty():
+		return Vector2(0.0, default_max)
+	var v_min: float = map[0]
+	var v_max: float = map[0]
+	for v in map:
+		v_min = minf(v_min, v)
+		v_max = maxf(v_max, v)
+	if is_equal_approx(v_min, v_max):
+		v_max = v_min + 1.0
+	return Vector2(v_min, v_max)
+
+
 ## Min/max over [member temperature_map] (requires [method is_allocated]).
 func get_temperature_range() -> Vector2:
-	if not is_allocated() or temperature_map.is_empty():
-		return Vector2(0.0, 1.0)
-	var t_min: float = temperature_map[0]
-	var t_max: float = temperature_map[0]
-	for i in range(1, temperature_map.size()):
-		var v: float = temperature_map[i]
-		t_min = minf(t_min, v)
-		t_max = maxf(t_max, v)
-	if is_equal_approx(t_min, t_max):
-		t_max = t_min + 1.0
-	return Vector2(t_min, t_max)
+	return _get_map_range(temperature_map, 1.0)
 
 
 ## Min/max over [member precipitation_map] (annual precipitation, cm;
 ## requires [method is_allocated]).
 func get_precipitation_range() -> Vector2:
-	if not is_allocated() or precipitation_map.is_empty():
-		return Vector2(0.0, MOISTURE_ANNUAL_PRECIP_CM_MAX)
-	var m_min: float = precipitation_map[0]
-	var m_max: float = precipitation_map[0]
-	for i in range(1, precipitation_map.size()):
-		var v: float = precipitation_map[i]
-		m_min = minf(m_min, v)
-		m_max = maxf(m_max, v)
-	if is_equal_approx(m_min, m_max):
-		m_max = m_min + 1.0
-	return Vector2(m_min, m_max)
+	return _get_map_range(precipitation_map, MOISTURE_ANNUAL_PRECIP_CM_MAX)
 
 
 ## Fixed display span for [method build_precipitation_texture_array]:
@@ -342,17 +335,7 @@ func get_precipitation_colormap_range() -> Vector2:
 
 ## Min/max over [member soil_wetness_map] (annual cm; requires [method is_allocated]).
 func get_soil_wetness_range() -> Vector2:
-	if not is_allocated() or soil_wetness_map.is_empty():
-		return Vector2(0.0, MOISTURE_ANNUAL_PRECIP_CM_MAX)
-	var m_min: float = soil_wetness_map[0]
-	var m_max: float = soil_wetness_map[0]
-	for i in range(1, soil_wetness_map.size()):
-		var v: float = soil_wetness_map[i]
-		m_min = minf(m_min, v)
-		m_max = maxf(m_max, v)
-	if is_equal_approx(m_min, m_max):
-		m_max = m_min + 1.0
-	return Vector2(m_min, m_max)
+	return _get_map_range(soil_wetness_map, MOISTURE_ANNUAL_PRECIP_CM_MAX)
 
 
 func get_soil_wetness_colormap_range() -> Vector2:

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Godot;
@@ -635,11 +636,6 @@ public partial class ClimateSimulator : RefCounted
         return AnalyticZonalPrecipBaseCm(latRad);
     }
 
-    public float GetBasePrecipCmByLatitudeDeg(float latitudeDeg)
-    {
-        return SampleBasePrecipCmByLatitudeDeg(latitudeDeg);
-    }
-
     /// <summary>
     /// Base zonal temperature (deg C) by latitude in degrees, excluding land modifiers and lapse cooling.
     /// Includes the runtime generation temperature offset.
@@ -649,11 +645,6 @@ public partial class ClimateSimulator : RefCounted
         float latRad = Mathf.DegToRad(Mathf.Clamp(latitudeDeg, -90.0f, 90.0f));
         float t = AnalyticZonalTemperatureC(latRad);
         return t + GenerationTemperatureOffsetC;
-    }
-
-    public float GetBaseTemperatureCByLatitudeDeg(float latitudeDeg, float tMax, float tMin)
-    {
-        return SampleBaseTemperatureCByLatitudeDeg(latitudeDeg, tMax, tMin);
     }
 
     private static bool[] BuildStableOceanMask(float[] elevMap, int res, int cpf, float msl)
@@ -1066,6 +1057,7 @@ public partial class ClimateSimulator : RefCounted
         grid.Set("precipitation_map", precipitationMap);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static Vector3I ClimateCellNeighbor(int res, int face, int x, int y, int dx, int dy) =>
         CubeSphereMath.climate_grid_neighbor(res, face, x, y, dx, dy);
 

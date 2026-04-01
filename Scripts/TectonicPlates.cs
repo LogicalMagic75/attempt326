@@ -7,6 +7,8 @@ public partial class TectonicPlates : Godot.Resource
 {
     private const float EARTH_MIN_ELEVATION_METERS = -11000.0f;
     private const float EARTH_MAX_ELEVATION_METERS = 8850.0f;
+    /// <summary>Upper bound on Monte Carlo attempts in <see cref="RejectSampleUnitDirection"/>.</summary>
+    private const int MAX_REJECTION_SAMPLES = 3000;
 
     [Export]
     public int GenerationSeed { get; set; } = 1;
@@ -124,6 +126,8 @@ public partial class TectonicPlates : Godot.Resource
     private List<float> _plateDensity = [];
     private List<float> _pairOpening = [];
     private float _kinematicOpeningDenom = 1.0f;
+    /// <summary>Cached (oceanic + continental) / 2 for plate-type classification; refreshed in <see cref="Regenerate"/>.</summary>
+    private float _crustMidpoint;
 
     private struct PlateMatch
     {
@@ -224,7 +228,7 @@ public partial class TectonicPlates : Godot.Resource
     private Godot.Vector3 RejectSampleUnitDirection(Godot.RandomNumberGenerator rng, List<Godot.Vector3> existing, float minAngleRad)
     {
         float cMin = Godot.Mathf.Cos(minAngleRad);
-        for (int attemptIdx = 0; attemptIdx < 2800; attemptIdx++)
+        for (int attemptIdx = 0; attemptIdx < MAX_REJECTION_SAMPLES; attemptIdx++)
         {
             Godot.Vector3 c = RandomUnitVector(rng);
             bool ok = true;
@@ -281,6 +285,8 @@ public partial class TectonicPlates : Godot.Resource
 
     public void Regenerate()
     {
+        _crustMidpoint = (OceanicBaseHeightNorm + ContinentalBaseHeightNorm) * 0.5f;
+
         Godot.RandomNumberGenerator rng = new Godot.RandomNumberGenerator();
         rng.Seed = (ulong)(GenerationSeed * 7919 + PlateCount * 37);
 
@@ -529,8 +535,7 @@ public partial class TectonicPlates : Godot.Resource
             return true;
         }
 
-        float crustMidpoint = (OceanicBaseHeightNorm + ContinentalBaseHeightNorm) * 0.5f;
-        return _plateBaseHeights[idx] <= crustMidpoint;
+        return _plateBaseHeights[idx] <= _crustMidpoint;
     }
 
     private float RandNormal(Godot.RandomNumberGenerator rng, float mean, float sigma)

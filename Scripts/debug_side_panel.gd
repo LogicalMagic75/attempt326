@@ -416,18 +416,16 @@ func _open_whittaker_diagram_window() -> void:
 
 func _sample_base_precip_points() -> PackedVector2Array:
 	var points := PackedVector2Array()
-	var sim := ClimateSimulator.new()
 	for lat in range(-90, 91):
-		var cm: float = sim.GetBasePrecipCmByLatitudeDeg(float(lat))
+		var cm: float = ClimateSimulator.SampleBasePrecipCmByLatitudeDeg(float(lat))
 		points.push_back(Vector2(float(lat), cm))
 	return points
 
 
 func _sample_base_temperature_points() -> PackedVector2Array:
 	var points := PackedVector2Array()
-	var sim := ClimateSimulator.new()
 	for lat in range(-90, 91):
-		var c: float = sim.GetBaseTemperatureCByLatitudeDeg(
+		var c: float = ClimateSimulator.SampleBaseTemperatureCByLatitudeDeg(
 			float(lat), climate_equator_temp_c, climate_pole_temp_c
 		)
 		points.push_back(Vector2(float(lat), c))

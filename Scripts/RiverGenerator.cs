@@ -1,6 +1,7 @@
 using Godot;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 public partial class RiverGenerator : RefCounted
 {
@@ -217,9 +218,6 @@ public partial class RiverGenerator : RefCounted
                 basin[i] = 0;
             }
         }
-
-        topoDesc = BuildDownstreamTopologicalOrder(downstream, oceanMask, n);
-        landN = topoDesc.Length;
 
         ReportProgress(progress, 0.66f);
 
@@ -703,10 +701,9 @@ public partial class RiverGenerator : RefCounted
         return (slope, tie);
     }
 
-    private static Vector3I ClimateCellNeighbor(int res, int face, int x, int y, int dx, int dy)
-    {
-        return CubeSphereMath.climate_grid_neighbor(res, face, x, y, dx, dy);
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector3I ClimateCellNeighbor(int res, int face, int x, int y, int dx, int dy) =>
+        CubeSphereMath.climate_grid_neighbor(res, face, x, y, dx, dy);
 
     private static void ReportProgress(Callable progress, float value)
     {

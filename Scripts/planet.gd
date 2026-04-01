@@ -1,6 +1,10 @@
 @tool
 extends Node3D
 
+enum VizMode { NONE, ELEVATION, TEMPERATURE, PRECIPITATION, BIOME }
+
+var current_viz_mode: VizMode = VizMode.NONE
+
 const _PS := preload("res://Scripts/project_scale.gd")
 ## Cube-sphere body at [member _PS.PLANET_RADIUS_GAME_UNITS]; optional in-memory height / climate viz.
 const _ELEVATION_SHADER: Shader = preload("res://Shaders/elevation_grayscale.gdshader")
@@ -30,10 +34,6 @@ const _BIOME_SHADER: Shader = preload("res://Shaders/biome_colormap.gdshader")
 ## Flow accumulation above this value (watershed / artery-boosted units from [method ClimateSimulator.calculate_flow_accumulation]) draws major rivers in the biome shader.
 @export var river_flow_threshold: float = 100.0
 
-var _elevation_visualization_enabled: bool = false
-var _temperature_visualization_enabled: bool = false
-var _precipitation_visualization_enabled: bool = false
-var _biome_visualization_enabled: bool = false
 var _default_material: StandardMaterial3D
 var _elevation_material: ShaderMaterial
 var _height_array_tex: Texture2DArray
@@ -91,9 +91,6 @@ func create_face(st: SurfaceTool, normal: Vector3, offset: int) -> int:
 			
 			if x < resolution - 1 and y < resolution - 1:
 				var i = x + y * resolution
-				
-				# FLIPPED WINDING ORDER: (offset + i, offset + i + resolution, offset + i + resolution + 1)
-				# This ensures the 'front' of the face points away from the center.
 				st.add_index(offset + i)
 				st.add_index(offset + i + resolution)
 				st.add_index(offset + i + resolution + 1)
@@ -119,16 +116,23 @@ func _apply_active_material_to_mesh(mesh_instance: MeshInstance3D) -> void:
 	if mesh_instance == null:
 		return
 	_ensure_default_material()
-	if _biome_visualization_enabled and _biome_material != null:
-		mesh_instance.material_override = _biome_material
-	elif _precipitation_visualization_enabled and _precipitation_material != null:
-		mesh_instance.material_override = _precipitation_material
-	elif _temperature_visualization_enabled and _temperature_material != null:
-		mesh_instance.material_override = _temperature_material
-	elif _elevation_visualization_enabled and _elevation_material != null:
-		mesh_instance.material_override = _elevation_material
-	else:
-		mesh_instance.material_override = _default_material
+	var mat: Material = _default_material
+	match current_viz_mode:
+		VizMode.BIOME:
+			if _biome_material != null:
+				mat = _biome_material
+		VizMode.PRECIPITATION:
+			if _precipitation_material != null:
+				mat = _precipitation_material
+		VizMode.TEMPERATURE:
+			if _temperature_material != null:
+				mat = _temperature_material
+		VizMode.ELEVATION:
+			if _elevation_material != null:
+				mat = _elevation_material
+		_:
+			pass
+	mesh_instance.material_override = mat
 
 
 func _apply_active_material() -> void:
@@ -138,29 +142,34 @@ func _apply_active_material() -> void:
 ## Builds [Texture2DArray] from [param grid] [member ClimateGrid.elevation_map] (GPU path: [method Image.create_from_data]).
 func set_elevation_visualization(enabled: bool, grid: ClimateGrid = null) -> bool:
 	if enabled:
-		_temperature_visualization_enabled = false
-		_precipitation_visualization_enabled = false
-		_biome_visualization_enabled = false
+		# Matches prior behavior: drop climate viz before grid validation (may leave no viz if this fails).
+		match current_viz_mode:
+			VizMode.TEMPERATURE, VizMode.PRECIPITATION, VizMode.BIOME:
+				current_viz_mode = VizMode.NONE
+			_:
+				pass
 		if grid == null or not grid.is_allocated():
 			return false
 		if not _load_elevation_texture_array_from_grid(grid):
 			return false
 		_ensure_elevation_shader_material()
-		_elevation_visualization_enabled = true
+		current_viz_mode = VizMode.ELEVATION
 	else:
-		_elevation_visualization_enabled = false
+		if current_viz_mode == VizMode.ELEVATION:
+			current_viz_mode = VizMode.NONE
 	_apply_active_material()
 	return true
 
 
 func is_elevation_visualization_enabled() -> bool:
-	return _elevation_visualization_enabled
+	return current_viz_mode == VizMode.ELEVATION
 
 
 ## Unshaded colormap from [ClimateGrid] temperature channel. Mutually exclusive with elevation viz.
 func set_temperature_visualization(enabled: bool, grid: ClimateGrid = null) -> bool:
 	if not enabled:
-		_temperature_visualization_enabled = false
+		if current_viz_mode == VizMode.TEMPERATURE:
+			current_viz_mode = VizMode.NONE
 		_apply_active_material()
 		return true
 	if grid == null or not grid.is_allocated():
@@ -174,23 +183,21 @@ func set_temperature_visualization(enabled: bool, grid: ClimateGrid = null) -> b
 	_temperature_material.set_shader_parameter("u_temperatures", _temperature_array_tex)
 	_temperature_material.set_shader_parameter("u_t_min", temp_rng.x)
 	_temperature_material.set_shader_parameter("u_t_max", temp_rng.y)
-	_temperature_visualization_enabled = true
-	_elevation_visualization_enabled = false
-	_precipitation_visualization_enabled = false
-	_biome_visualization_enabled = false
+	current_viz_mode = VizMode.TEMPERATURE
 	_apply_active_material()
 	return true
 
 
 func is_temperature_visualization_enabled() -> bool:
-	return _temperature_visualization_enabled
+	return current_viz_mode == VizMode.TEMPERATURE
 
 
 ## Unshaded colormap from [ClimateGrid] precipitation channel
 ## (annual precipitation, cm). Mutually exclusive with others.
 func set_precipitation_visualization(enabled: bool, grid: ClimateGrid = null) -> bool:
 	if not enabled:
-		_precipitation_visualization_enabled = false
+		if current_viz_mode == VizMode.PRECIPITATION:
+			current_viz_mode = VizMode.NONE
 		_apply_active_material()
 		return true
 	if grid == null or not grid.is_allocated():
@@ -204,22 +211,20 @@ func set_precipitation_visualization(enabled: bool, grid: ClimateGrid = null) ->
 	_precipitation_material.set_shader_parameter("u_moistures", _precipitation_array_tex)
 	_precipitation_material.set_shader_parameter("u_m_min", p_rng.x)
 	_precipitation_material.set_shader_parameter("u_m_max", p_rng.y)
-	_precipitation_visualization_enabled = true
-	_elevation_visualization_enabled = false
-	_temperature_visualization_enabled = false
-	_biome_visualization_enabled = false
+	current_viz_mode = VizMode.PRECIPITATION
 	_apply_active_material()
 	return true
 
 
 func is_precipitation_visualization_enabled() -> bool:
-	return _precipitation_visualization_enabled
+	return current_viz_mode == VizMode.PRECIPITATION
 
 
 ## Unshaded discrete palette from [ClimateGrid] [member ClimateGrid.biome_index_map]. Mutually exclusive with others.
 func set_biome_visualization(enabled: bool, grid: ClimateGrid = null) -> bool:
 	if not enabled:
-		_biome_visualization_enabled = false
+		if current_viz_mode == VizMode.BIOME:
+			current_viz_mode = VizMode.NONE
 		_apply_active_material()
 		return true
 	if grid == null or not grid.is_allocated():
@@ -241,21 +246,18 @@ func set_biome_visualization(enabled: bool, grid: ClimateGrid = null) -> bool:
 	_biome_material.set_shader_parameter("u_heights", _biome_elevation_array_tex)
 	_biome_material.set_shader_parameter("u_flow_accumulation", _biome_flow_array_tex)
 	_biome_material.set_shader_parameter("u_river_flow_threshold", river_flow_threshold)
-	_biome_visualization_enabled = true
-	_elevation_visualization_enabled = false
-	_temperature_visualization_enabled = false
-	_precipitation_visualization_enabled = false
+	current_viz_mode = VizMode.BIOME
 	_apply_active_material()
 	return true
 
 
 func is_biome_visualization_enabled() -> bool:
-	return _biome_visualization_enabled
+	return current_viz_mode == VizMode.BIOME
 
 
 ## Call after climate recompute while biome viz is on.
 func refresh_biome_visualization(grid: ClimateGrid) -> void:
-	if not _biome_visualization_enabled or grid == null or not grid.is_allocated():
+	if current_viz_mode != VizMode.BIOME or grid == null or not grid.is_allocated():
 		return
 	var tex: Texture2DArray = grid.build_biome_texture_array()
 	if tex == null:
@@ -278,7 +280,7 @@ func refresh_biome_visualization(grid: ClimateGrid) -> void:
 
 ## Call after climate recompute while temperature viz is on.
 func refresh_temperature_visualization(grid: ClimateGrid) -> void:
-	if not _temperature_visualization_enabled or grid == null or not grid.is_allocated():
+	if current_viz_mode != VizMode.TEMPERATURE or grid == null or not grid.is_allocated():
 		return
 	var tex: Texture2DArray = grid.build_temperature_texture_array()
 	if tex == null:
@@ -293,7 +295,7 @@ func refresh_temperature_visualization(grid: ClimateGrid) -> void:
 
 ## Call after climate recompute while precipitation viz is on.
 func refresh_precipitation_visualization(grid: ClimateGrid) -> void:
-	if not _precipitation_visualization_enabled or grid == null or not grid.is_allocated():
+	if current_viz_mode != VizMode.PRECIPITATION or grid == null or not grid.is_allocated():
 		return
 	var tex: Texture2DArray = grid.build_precipitation_texture_array()
 	if tex == null:
@@ -308,7 +310,7 @@ func refresh_precipitation_visualization(grid: ClimateGrid) -> void:
 
 ## Call after elevation data changes while heatmap is on.
 func refresh_elevation_visualization(grid: ClimateGrid) -> void:
-	if not _elevation_visualization_enabled or grid == null or not grid.is_allocated():
+	if current_viz_mode != VizMode.ELEVATION or grid == null or not grid.is_allocated():
 		return
 	if not _load_elevation_texture_array_from_grid(grid):
 		return
